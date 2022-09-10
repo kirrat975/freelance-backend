@@ -45,11 +45,11 @@ const retrieveOrdersOfASeller = (req, res) => {
                 })
             }
             ids = []
-            id.map(obj => ids.push(obj["orders"]))
-            console.log(ids)
+            id.map(obj => obj["orders"].map(id => ids.push(id)))
+            // console.log(ids)
             orderFunc.orderModel.find({ _id: { $in: ids } })
                 .then((orders) => {
-                    res.send("Orders " + orders)
+                    res.send(orders)
                 })
                 .catch((err) => {
                     console.log(err.message)
@@ -63,8 +63,8 @@ const retrieveOrdersOfASeller = (req, res) => {
                 })
             }
             return res.status(500).send({
-                message: "Error retrieving orders with email " + req.params.email
-                // message: err.message
+                // message: "Error retrieving orders with email " + req.params.email
+                message: err.message
             })
         })
 }
@@ -92,7 +92,8 @@ const retrieveOrder = (req, res) => {
 }
 
 const updateOrderStatus = (req, res) => {
-    orderFunc.orderModel.findByIdAndUpdate(req.params.orderId, { status: req.body.status })
+    if (req.body.status == "Cancelled") {
+        orderFunc.orderModel.findByIdAndUpdate(req.params.orderId, { status: req.body.status, price: 0})
         .then((order) => {
             //    res.send(order["sellerId"])
             sellerModel.findByIdAndUpdate(order["sellerId"], { rating: req.body.rating })
@@ -113,6 +114,30 @@ const updateOrderStatus = (req, res) => {
                 message: "Error retrieving order with id " + req.params.id
             })
         })
+    }
+    else {
+        orderFunc.orderModel.findByIdAndUpdate(req.params.orderId, { status: req.body.status })
+        .then((order) => {
+            //    res.send(order["sellerId"])
+            sellerModel.findByIdAndUpdate(order["sellerId"], { rating: req.body.rating })
+                .then(seller => {
+                    res.send(seller)
+                })
+                .catch((err) => {
+                    res.send("Error: "+err.message)
+                })
+        })
+        .catch((err) => {
+            if (err.kind == "ObjectId") {
+                return res.status(404).send({
+                    message: "Order not found with id " + req.params.id
+                })
+            }
+            return res.status(500).send({
+                message: "Error retrieving order with id " + req.params.id
+            })
+        })
+    }
 }
 
 module.exports = {
